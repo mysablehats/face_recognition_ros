@@ -7,7 +7,9 @@ project(face_recognition_ros)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED)
+find_package(catkin REQUIRED COMPONENTS
+  genmsg
+)
 find_package(OpenCV 2 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
