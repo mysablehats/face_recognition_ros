@@ -7,10 +7,11 @@ roslib.load_manifest('face_recognition_ros')
 import sys
 import rospy
 import cv2
+## this should be crashing. i forgot to install this guy
 from std_msgs.msg import UInt16
 import sensor_msgs
 from cv_bridge import CvBridge, CvBridgeError
-from face_recognition_ros.msg import HeadsArray
+from face_recognition_ros.msg import Heads,HeadsArray
 import numpy as np
 
 ####TODO: There is a serialization error when trying to publish images. I thought it was a numpy thing, that it changed the array when I do the .asarray command, but the .dtype continues to be uint8, so I don't think that is it. I think that some other internal variable changed
@@ -24,6 +25,7 @@ class find_faces:
     #imout = rospy.get_param('~image_output', "face_overlay_image_raw")
 
     #self.image_pub = rospy.Publisher(imout,sensor_msgs.msg.Image, queue_size=1)
+    self.heads_pub = rospy.Publisher('heads', HeadsArray, queue_size=1)
     imin = rospy.get_param('~image_input', "videofiles/image_raw")
 
     self.bridge = CvBridge()
@@ -60,11 +62,17 @@ class find_faces:
         face_locations = face_recognition.face_locations(image, number_of_times_to_upsample=0, model="cnn")
 
         #print("I found {} face(s) in this photograph.".format(len(face_locations)))
-
+        thisHeadArray = HeadsArray()
         for face_location in face_locations: ### yeah, well, I will simplify this. it is already breaking too much and other people should build on top of my work, right?
 
             # Print the location of each face in this image
             top, right, bottom, left = face_location
+            thisHead = Heads()
+            thisHead.top = top
+            thisHead.right = right
+            thisHead.bottom = bottom
+            thisHead.left = left
+            thisHeadArray.append(thisHead)
             print("A face is located at pixel location Top: {}, Left: {}, Bottom: {}, Right: {}".format(top, left, bottom, right))
 
             ## drawing a rectangle around every face it finds:
@@ -84,6 +92,7 @@ class find_faces:
           top, right, bottom, left = face_locations[0]
           self.headcenterx_pub.publish(np.array((left+right)/2,'uint16'))
           self.headcentery_pub.publish(np.array((top+bottom)/2,'uint16'))
+          self.heads_pub.publish(thisHeadArray)
     else:
         self.framecount+=1
 
