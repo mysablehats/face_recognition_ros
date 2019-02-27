@@ -1,4 +1,4 @@
-UInt16 top
-UInt16 left
-UInt16 bottom
-UInt16 right
+uint16 top
+uint16 left
+uint16 bottom
+uint16 right

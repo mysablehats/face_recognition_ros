@@ -69,7 +69,7 @@ find_package(OpenCV 2 REQUIRED)
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
  DEPENDENCIES
- std_msgs  # Or other packages containing msgs
+ #std_msgs  # Or other packages containing msgs
 )
 
 ################################################
@@ -116,7 +116,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
 # include
-# ${catkin_INCLUDE_DIRS}
+${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library

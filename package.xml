@@ -53,7 +53,7 @@
   <depend>sensor_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>rospy</depend>
-  <depend>std_msgs</depend>
+  <!-- <depend>std_msgs</depend> -->
   <depend>python-opencv</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
