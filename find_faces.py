@@ -7,6 +7,7 @@ roslib.load_manifest('face_recognition_ros')
 import sys
 import rospy
 import cv2
+import time
 ## this should be crashing. i forgot to install this guy
 from std_msgs.msg import UInt16
 import sensor_msgs
@@ -23,30 +24,46 @@ class find_faces:
    etc stuff'''
   def __init__(self):
     #imout = rospy.get_param('~image_output', "face_overlay_image_raw")
-
+    print('hello')
+    rospy.loginfo('log hello')
     #self.image_pub = rospy.Publisher(imout,sensor_msgs.msg.Image, queue_size=1)
     self.heads_pub = rospy.Publisher('heads', HeadsArray, queue_size=1)
     imin = rospy.get_param('~image_input', "videofiles/image_raw")
 
     self.bridge = CvBridge()
+    try:
+        rospy.wait_for_message(imin, sensor_msgs.msg.Image, timeout=5)
+    except rospy.ROSException as e:
+        print(e)
+        rospy.logerr(e)
+        rospy.signal_shutdown('could not receive images in 5 seconds. check networking settings and topics. shutting down!')
+
     self.image_sub = rospy.Subscriber(imin,sensor_msgs.msg.Image,self.callback)
 
     self.headcenterx_pub = rospy.Publisher("headcenterx", UInt16, queue_size=1)
     self.headcentery_pub = rospy.Publisher("headcentery", UInt16, queue_size=1)
     self.frameskipping = rospy.get_param('~frameskipping', 1)
+    self.numup = rospy.get_param('~number_of_times_to_upsample', 0)
+    self.reorder_heads = rospy.get_param('~reorder_heads', False)
     self.framecount = 0 # always classifies first frame
     print("instantiated face_finder")
+    rospy.loginfo('instantiated face_finder okay!')
 
   def callback(self,data):
     #rospy.loginfo("reached callback. that means I can read the Subscriber!")
     #print(self.framecount)
     if self.framecount%self.frameskipping is 0:
+        start_time = time.time()
         self.framecount = 1
+        rospy.loginfo("inside callback after passing framskipping.")
         #self.headcenterx_pub.publish(0)
         #self.headcentery_pub.publish(0)
         try:
           cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+          rospy.loginfo("got image okay!")
         except CvBridgeError as e:
+          rospy.logerr("cv_bridge failed.")
+          rospy.logerr(e)
           print(e)
 
         # Load the jpg file into a numpy array
@@ -59,12 +76,12 @@ class find_faces:
         # unless you have an nvidia GPU and dlib compiled with CUDA extensions. But if you do,
         # this will use GPU acceleration and perform well.
         # See also: find_faces_in_picture.py
-        face_locations = face_recognition.face_locations(image, number_of_times_to_upsample=0, model="cnn")
+        face_locations = face_recognition.face_locations(image, number_of_times_to_upsample=self.numup , model="cnn")
 
-        #print("I found {} face(s) in this photograph.".format(len(face_locations)))
+        rospy.loginfo("I found {} face(s) in this photograph.".format(len(face_locations)))
         thisHeadArray = HeadsArray()
         for face_location in face_locations: ### yeah, well, I will simplify this. it is already breaking too much and other people should build on top of my work, right?
-
+            rospy.loginfo("found face.")
             # Print the location of each face in this image
             top, right, bottom, left = face_location
             thisHead = Heads()
@@ -72,8 +89,8 @@ class find_faces:
             thisHead.right = right
             thisHead.bottom = bottom
             thisHead.left = left
-            thisHeadArray.append(thisHead)
-            print("A face is located at pixel location Top: {}, Left: {}, Bottom: {}, Right: {}".format(top, left, bottom, right))
+            thisHeadArray.heads.append(thisHead)
+            rospy.loginfo("A face is located at pixel location Top: {}, Left: {}, Bottom: {}, Right: {}".format(top, left, bottom, right))
 
             ## drawing a rectangle around every face it finds:
             #cv2.rectangle(cv_image,(top,left),(bottom,right),(0,255,0),3)
@@ -83,6 +100,12 @@ class find_faces:
             #pil_image = Image.fromarray(face_image)
             #pil_image.show()
 
+        # if self.reorder_heads:
+        #     # I will need to figure out which one is the closest to the center of the image and then sort by proximity, making sure I don't flip heads around! what a pain...
+        #     rospy.logwarn('not implemented')
+        #     pass
+            # for i in range(0, len(thisHeadArray)):
+            #     pass
         # try:
         #   #self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
         # except CvBridgeError as e:
@@ -93,6 +116,9 @@ class find_faces:
           self.headcenterx_pub.publish(np.array((left+right)/2,'uint16'))
           self.headcentery_pub.publish(np.array((top+bottom)/2,'uint16'))
           self.heads_pub.publish(thisHeadArray)
+        end_time = time.time()
+        total_time = end_time-start_time
+        rospy.loginfo("Time used for finding these many heads was: {}\n Could run with these settings at a maximum of: {} FPS".format(total_time, 1/total_time))
     else:
         self.framecount+=1
 
